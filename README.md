@@ -1,6 +1,6 @@
 # Fuzzy Name Matching
 
-Identifying the same people in different databases can be a tricky problem. In an ideal world, people would all have a unique identifier that we could use to join records across databases. However, when this is not available, it may be necessary to try to use people's names for matching. As it turns out, people's names can be messy, and are less suitable for use as unique identifiers than you might hope. Some issues that lead to complication are:
+Identifying the same people in different databases can be a tricky problem. In an ideal world, people would all have a unique identifier that we could use to join records across databases. However, when this is not available, it may be necessary to try to use people’s names for matching. As it turns out, people’s names can be messy, and are less suitable for use as unique identifiers than you might hope. Some issues that lead to complication are:
 
 * Initials
 * Suffixes (III, Jr. etc.)
@@ -13,19 +13,19 @@ Identifying the same people in different databases can be a tricky problem. In a
 
 ### Why do we need this? 
 
-At Compass, most of our real estate agents have one or more memberships in what is called a Multiple Listing Service, or MLS (a company that acts as a data source for real estate listings in a given area). For a variety of reasons, we need to identify records for our agents in these systems. In many cases, it's possible to match agents using their work email address, personal email address, or their state real estate license number. However, about half of the time matching by name is the most reliable solution. 
+At Compass, most of our real estate agents have one or more memberships in what is called a Multiple Listing Service, or MLS (a company that acts as a data source for real estate listings in a given area). For a variety of reasons, we need to identify records for our agents in these systems. In many cases, it’s possible to match agents using their work email address, personal email address, or their state real estate license number. However, about half of the time matching by name is the most reliable solution. 
 
 ### Efficiency 
 
-A simple approach would be to write a function that takes two names and returns whether they are considered a match. However, when looking for a few thousand people in a few million records, that becomes a problem of n-squared efficiency (a few billion comparisons). Instead, the problem can be optimized by indexing the target records. In some cases, it may be necessary to add several variations of a given person's name to the index. 
+A simple approach would be to write a function that takes two names and returns whether they are considered a match. However, when looking for a few thousand people in a few million records, that becomes a problem of n-squared complexity (a few billion comparisons). Instead, the problem can be optimized by indexing the target records. In some cases, it may be necessary to add several variations of a given person’s name to the index. 
 
 ### Reliability
 
-Matching by name using these techniques may produce duplicate records. If one record is found we have a relatively high degree of confidence in a match, but if multiple records are found there is a risk of false positives. Therefore it's a good idea to start with the most exact matching techniques, which tend to produce fewer results, then proceed to the fuzzier ones.  
+Matching by name using these techniques may produce duplicate records. If one record is found we have a relatively high degree of confidence in a match, but if multiple records are found there is a risk of false positives. Therefore it’s a good idea to start with the most exact matching techniques, which tend to produce fewer results, then proceed to the fuzzier ones.  
 
 ### Nicknames 
 
-It's surprisingly common for people to use variations on a name in different systems. For example, someone may prefer to use a nickname like `Dave` as part of their public facing brand, while using their legal name `David` for official purposes. For our purposes, these need to be considered equivalent.
+It’s surprisingly common for people to use variations on a name in different systems. For example, someone may prefer to use a nickname like `Dave` as part of their public facing brand, while using their legal name `David` for official purposes. For our program, these need to be considered equivalent.
 
 Some names have quite a number of variations, like `Alexander`, `Alexandra`, `Alex`, `Alejandro`, `Ali`, and `Sasha`. We started with a list of common nicknames, and expanded it by training the system using people matched by other means such as email. In this way we empirically found no fewer than twenty variations of `Catherine`, `Katherine`, `Kathryn`, `Cathy`, `Katie`, `Kate`, etc.
 
@@ -79,7 +79,7 @@ For your purposes, it may be helpful to add other punctuation, substitutions or 
 
 ### Person class
 
-For this exercise we'll use a very simple class called Person. Every person will have an id, first name and last name. In addition, we'll store some derived values: simple versions of the first and last name, and a single full name string based on the simple first and last names with all the spaces removed.
+For this exercise we’ll use a very simple class called Person. Every person will have an id, first name and last name. In addition, we’ll store some derived values: simple versions of the first and last name, and a single full name string based on the simple first and last names with all the spaces removed.
 
 ```
 class Person: Equatable {
@@ -102,15 +102,15 @@ class Person: Equatable {
     }
 }
 ```
-For this simple example, we'll use the same Person class for both the source and target data. In other cases, it may make more sense for them to be different classes, especially if they are stored in different databsae systems.
+For this simple example, we’ll use the same Person class for both the source and target data. In other cases, it may make more sense for them to be different classes, especially if they are stored in different database systems.
 
 ### Indexing
 
 For all the people in our source list, we will try to find matching people in the target list. It is expected that the target list may be orders of magnitude larger than the source list, so we will index it first for efficiency. 
 
-We'll index all the target people using three dictionaries, mapping first, last and full names to arrays of people who have them. 
+We’ll index all the target people using three dictionaries, mapping first, last and full names to arrays of people who have them. 
 
-In addition, if a target person has multiple first and/or last names, we'll add every possible combination of any fist name with any last name to the full name index. There's no reason why we can't add the same person to the index multiple times. 
+In addition, if a target person has multiple first and/or last names, we’ll add every possible combination of any fist name with any last name to the full name index. It’s not a problem to add the same person to the index multiple times. 
 ```
 var firstIndex = [String:[Person]]()
 var lastIndex = [String:[Person]]()
@@ -133,13 +133,13 @@ for target in targetPeople {
 
 ### Match function
 
-Given a source person, here's a function that will look them up in the indexes using a few different techniques, and return a result if found. 
+Given a source person, here’s a function that will look them up in the indexes using a few different techniques, and return a result if found. 
 
 The first approach is to look for an exact match in the full name index. This uses the simplified names, so capitalization, punctuation, diacritical marks, suffixes etc. are not an issue. Whether a middle name is added to the first or last name field is also not a concern in this case. 
 
-If the source person's first or last name contain multiple words, we'll try looking up every possible combination of first and last names in the full name index. Note that initials are ignored. 
+If the source person’s first or last name contain multiple words, we’ll try looking up every possible combination of first and last names in the full name index. Note that initials are ignored, so `Alice B.` and `Evan B.` will not be considered a match.
 
-Finally, we'll try matching using nicknames. We'll look for all people with the same last name, check if there are nicknames of the person's frst name, and look for all people with any of those as first names. Then we'll just take the intersection of those two lists and those are the results.  
+Finally, we’ll try matching using nicknames. We’ll look for all people with the same last name, check if there are nicknames of the person’s frst name, and look for all people with any of those as first names. Then we’ll just take the intersection of those two lists to get the results.  
 
 ```
 func matchPerson(source: Person) -> Person? {
@@ -214,7 +214,7 @@ A name in a different alphabet. The parentheses are ignored, and the name is ind
 
 `Yao (丁尧) / Ding = Yao / Ding`
 
-Same principle, but with the extra name in the source data instead of the target data. The index is queried using either or both first names.  
+Similar situation, but with the extra name in the source data instead of the target data. The index is queried using either or both first names.  
 
 `Angel / Dionisio = Angel Anibal / Dionisio Castillo`
 
@@ -234,7 +234,7 @@ Combinatin of using nickname, removing punctuation and ignoring suffix.
 
 `Masha / Malygina = Maria / Malygina, PhD`
 
-Combinatin of using nickname, removing punctuation and ignoring suffix.
+Combination of using nickname, removing punctuation and ignoring suffix.
 
 `Ronny / Peña = Ronald / Pena`
 
