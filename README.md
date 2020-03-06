@@ -216,9 +216,9 @@ A name in a different alphabet. The parentheses are ignored, and the name is ind
 
 Same principle, but with the extra name in the source data instead of the target data. The index is queried using either or both first names.  
 
-`Angel / Dionisio = Angel / Dionisio De Los Santos`
+`Angel / Dionisio = Angel Anibal / Dionisio Castillo`
 
-Matching one word in a compound last name.
+Matching words in compound first and last names.
 
 `Theo / Rose = Theodore / Rose`
 
