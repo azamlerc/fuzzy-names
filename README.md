@@ -226,7 +226,7 @@ Matched by nickname.
 
 `bart / karmilowicz = Bartłomiej / Karmilowicz`
 
-Combination of case insensitive matching, man0ually replacing special characters, and using nicknames. 
+Combination of case insensitive matching, manually replacing special characters, and using nicknames. 
 
 `Sam / Grone = Samantha / Grone, Esq.`
 
