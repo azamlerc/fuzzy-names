@@ -31,7 +31,7 @@ Some names have quite a number of variations, like `Alexander`, `Alexandra`, `Al
 
 ### Sample code
 
-The sample code for this article is based on a script written in Swift. If you have a Mac, you can download the source code `here` and run the script in Xcode.
+The sample code for this article is based on a script written in Swift. If you have a Mac, you can download the [source code](https://github.com/azamlerc/fuzzy-names) and run the script in Xcode.
 
 ## Algorithm
 
