@@ -212,7 +212,7 @@ Matching is case insentitive.
 
 A name in a different alphabet. The parentheses are ignored, and the name is indexed using either or both first names.
 
-`Yao (丁堯) / Ding = Yao / Ding`
+`Yao (丁尧) / Ding = Yao / Ding`
 
 Same principle, but with the extra name in the source data instead of the target data. The index is queried using either or both first names.  
 
