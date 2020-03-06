@@ -230,7 +230,7 @@ Combination of case insensitive matching, manually replacing special characters,
 
 `Sam / Grone = Samantha / Grone, Esq.`
 
-Combinatin of using nickname, removing punctuation and ignoring suffix.
+Combination of using nickname, removing punctuation and ignoring suffix.
 
 `Masha / Malygina = Maria / Malygina, PhD`
 
