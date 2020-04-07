@@ -110,7 +110,7 @@ For all the people in our source list, we will try to find matching people in th
 
 We’ll index all the target people using three dictionaries, mapping first, last and full names to arrays of people who have them. 
 
-In addition, if a target person has multiple first and/or last names, we’ll add every possible combination of any fist name with any last name to the full name index. It’s not a problem to add the same person to the index multiple times. 
+In addition, if a target person has multiple first and/or last names, we’ll add every possible combination of any first name with any last name to the full name index. It’s not a problem to add the same person to the index multiple times. 
 ```
 var firstIndex = [String:[Person]]()
 var lastIndex = [String:[Person]]()
