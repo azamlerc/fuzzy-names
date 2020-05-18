@@ -46,32 +46,22 @@ First, we will need a function that can perform a few basic operations to simpli
 * remove common suffixes like `Jr` and `Esq`
 
 ```
-let punctuation = [".", ",", "(", ")", "|"]
-let substitutions = ["-":" ", "ł":"l"]
-let suffixes = ["Esq", "JD", "MBA", "PA", "PhD", "Jr","II", "III"].map { " " + $0.lowercased() }
+private func simplify(name: String) -> String {
+    let punctuation = [".", ",", "(", ")", "|"]
+    let substitutions = ["-": " ", "ł": "l"]
+    let suffixes = ["Esq", "JD", "MBA", "PA", "PhD", "Jr", "II", "III"].map { " " + $0.lowercased() }
 
-func simple(name: String) -> String {
-    var simple = name
-        .lowercased()
-        .folding(options: .diacriticInsensitive, locale: .current)
+    var simple = name.lowercased().folding(options: .diacriticInsensitive, locale: .current)
 
-    for value in punctuation {
-        if simple.contains(value) {
-            simple = simple.replacingOccurrences(of: value, with: "")
-        }
-    }
+    punctuation.filter { p in simple.contains(p) }
+        .forEach { p in simple = simple.replacingOccurrences(of: p, with: "") }
 
-    for (before,after) in substitutions {
-        if simple.contains(before) {
-            simple = simple.replacingOccurrences(of: before, with: after)
-        }
-    }
+    substitutions.filter { k, _ in simple.contains(k) }
+        .forEach { k, v in simple = simple.replacingOccurrences(of: k, with: v) }
 
-    for suffix in suffixes {
-        if simple.hasSuffix(suffix) {
-            simple = simple.replacingOccurrences(of: suffix, with: "")
-        }
-    }
+    suffixes.filter { s in simple.hasSuffix(s) }
+        .forEach { simple = simple.replacingOccurrences(of: $0, with: "") }
+
     return simple
 }
 ```
@@ -79,26 +69,28 @@ For your purposes, it may be helpful to add other punctuation, substitutions or 
 
 ### Person class
 
-For this exercise we’ll use a very simple class called Person. Every person will have an id, first name and last name. In addition, we’ll store some derived values: simple versions of the first and last name, and a single full name string based on the simple first and last names with all the spaces removed.
+For this exercise we’ll use a very simple class called Person. Every person will have an first and last name. In addition, we’ll have some computed properties: simple versions of the first and last name, and a single full name string based on the simple first and last names with all the spaces removed.
 
 ```
-class Person: Equatable {
-    let id: String
+class Person {
     let firstName: String
     let lastName: String
 
-    let simpleFirst: String
-    let simpleLast: String
-    let simpleFull: String
+    var simpleFirst: String {
+        return simplify(name: firstName)
+    }
 
-    init(id: String, firstName: String, lastName: String) {
-        self.id = id
+    var simpleLast: String {
+        return simplify(name: lastName)
+    }
+
+    var simpleFull: String {
+        return "\(simpleFirst)\(simpleLast)".replacingOccurrences(of: " ", with: "")
+    }
+
+    init(firstName: String, lastName: String) {
         self.firstName = firstName
         self.lastName = lastName
-
-        self.simpleFirst = simple(name: firstName)
-        self.simpleLast = simple(name: lastName)
-        self.simpleFull = (simpleFirst + simpleLast).replacingOccurrences(of: " ", with: "")
     }
 }
 ```
@@ -112,19 +104,32 @@ We’ll index all the target people using three dictionaries, mapping first, las
 
 In addition, if a target person has multiple first and/or last names, we’ll add every possible combination of any first name with any last name to the full name index. It’s not a problem to add the same person to the index multiple times. 
 ```
-var firstIndex = [String:[Person]]()
-var lastIndex = [String:[Person]]()
-var fullIndex = [String:[Person]]()
+class Matcher {
+    private let people: [Person]
 
-for target in targetPeople {
-    addToIndex(key: target.simpleFirst, person: target, index: &firstIndex)
-    addToIndex(key: target.simpleLast, person: target, index: &lastIndex)
-    addToIndex(key: target.simpleFull, person: target, index: &fullIndex)
+    private var firstIndex: [String: [Person]] = [:]
+    private var lastIndex: [String: [Person]] = [:]
+    private var fullIndex: [String: [Person]] = [:]
 
-    if target.simpleFirst.contains(" ") || target.simpleLast.contains(" ") {
-        for first in target.simpleFirst.components(separatedBy: " ") {
-            for last in target.simpleLast.components(separatedBy: " ") {
-                addToIndex(key: first + last, person: target, index: &fullIndex)
+    init(people: [Person]) {
+        self.people = people
+        buildIndexes()
+    }
+
+    private func buildIndexes() {
+        people.forEach { person in
+            firstIndex[person.simpleFirst, default: []].append(person)
+            lastIndex[person.simpleLast, default: []].append(person)
+            fullIndex[person.simpleFull, default: []].append(person)
+
+            guard person.simpleFirst.contains(" ") || person.simpleLast.contains(" ") else {
+                return
+            }
+
+            person.simpleFirst.components(separatedBy: " ").forEach { first in
+                person.simpleLast.components(separatedBy: " ").forEach { last in
+                    fullIndex[first + last, default: []].append(person)
+                }
             }
         }
     }
@@ -142,40 +147,81 @@ If the source person’s first or last name contain multiple words, we’ll try 
 Finally, we’ll try matching using nicknames. We’ll look for all people with the same last name, check if there are nicknames of the person’s frst name, and look for all people with any of those as first names. Then we’ll just take the intersection of those two lists to get the results.  
 
 ```
-func matchPerson(source: Person) -> Person? {
-    if let results = fullIndex[source.simpleFull] {
-        return results[0]
+func match(person: Person) -> Person? {
+    if let match = fullIndex[person.simpleFull]?.first {
+        return match
     }
 
-    if source.simpleFirst.contains(" ") || source.simpleLast.contains(" ") {
-        for first in nameVariations(name: source.simpleFirst) {
-            for last in nameVariations(name: source.simpleLast) {
-                if let results = fullIndex[first + last] {
-                    return results[0]
+    if person.simpleFirst.contains(" ") || person.simpleLast.contains(" ") {
+        for first in variations(name: person.simpleFirst) {
+            for last in variations(name: person.simpleLast) {
+                if let person = fullIndex[first + last]?.first {
+                    return person
                 }
             }
         }
     }
 
-    if let lastMatches = lastIndex[source.simpleLast],
-        let nicknames = getNicknames(value: source.simpleFirst),
-        let firstMatches = findPeople(nicknames: nicknames)
-    {
-        let results = firstMatches.filter(lastMatches.contains)
-        if results.count == 1 {
-            return results[0]
-        }
+    return matchingNicknames(person: person)?.first
+}
+
+private func variations(name: String) -> [String] {
+    guard name.contains(" ") else {
+        return [name]
     }
 
-    return nil
+    var names = [name.replacingOccurrences(of: " ", with: "")]
+    names.append(contentsOf: name.components(separatedBy: " ").filter { $0.count > 1 })
+    return names
+}
+
+func matchingNicknames(person: Person) -> [Person]? {
+    guard let lastMatches = lastIndex[person.simpleLast],
+        let nicknames = Nicknames.all.first(where: { $0.contains(person.simpleFirst) }) else {
+        return nil
+    }
+
+    let matches = nicknames.flatMap { firstIndex[$0] ?? [] }
+    return matches.filter(lastMatches.contains)
 }
 ```
 
-Calling the match function is as simple as:
+Testing the match function is as simple as:
 ```
-for source in sourcePeople {
-    if let target = matchPerson(source: source) {
-        source.matchedPerson = target
+enum TestData {
+    static var real: [Person] {
+        return [
+            Person(firstName: "Saurabh", lastName: "Shah"),
+            Person(firstName: "Andrew", lastName: "Zamler Carhart"),
+            Person(firstName: "Cheuk", lastName: "Kwan Chan"),
+            Person(firstName: "Alice (미선)", lastName: "Yoon"),
+            Person(firstName: "Samantha", lastName: "Grone, Esq."),
+        ]
+    }
+
+    static var fuzzy: [Person] {
+        return [
+            Person(firstName: "Saurabh", lastName: "Shah"),
+            Person(firstName: "Andrew", lastName: "Zamler-Carhart"),
+            Person(firstName: "Cheuk Kwan", lastName: "Chan"),
+            Person(firstName: "Alice", lastName: "Yoon"),
+            Person(firstName: "Sam", lastName: "Grone"),
+        ]
+    }
+}
+
+class MatcherTests: XCTestCase {
+    private var subject: Matcher?
+
+    override func setUp() {
+        super.setUp()
+        subject = Matcher(people: TestData.real)
+    }
+
+    func testAllMatches() {
+        TestData.fuzzy.enumerated().forEach { index, fuzzy in
+            XCTAssertEqual(subject?.match(person: fuzzy), TestData.real[index])
+        }
     }
 }
 ```
