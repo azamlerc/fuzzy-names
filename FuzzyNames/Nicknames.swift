@@ -79,7 +79,7 @@ enum Nicknames {
             ["nicholas", "nick"],
             ["norman", "norm"],
             ["pamela", "pam"],
-            ["patrick", "patricia", "patrice", "patty", "pat", "patti"],
+            ["patrick", "patricia", "patrice", "paddy", "patty", "pat", "patti"],
             ["peter", "pete"],
             ["philip", "phillip", "phil"],
             ["rammy", "ram"],
